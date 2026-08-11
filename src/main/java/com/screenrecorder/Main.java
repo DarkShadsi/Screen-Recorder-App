@@ -27,7 +27,9 @@ public class Main {
 
             JLabel statusLabel = new JLabel("Status: Initializing Drive Service...");
             JButton recordBtn = new JButton("● Start Recording");
+            JButton pauseBtn = new JButton("Pause");
             recordBtn.setEnabled(false);
+            pauseBtn.setEnabled(false);
 
             // Initialize Drive Service on background thread to prevent UI lockup during browser OAuth launch
             new Thread(() -> {
@@ -53,6 +55,8 @@ public class Main {
                         currentRecorder.start();
 
                         recordBtn.setText("■ Stop & Upload");
+                        pauseBtn.setText("Pause");
+                        pauseBtn.setEnabled(true);
                         statusLabel.setText("Status: Recording (Unlimited)...");
                     } catch (Exception ex) {
                         ex.printStackTrace();
@@ -67,6 +71,9 @@ public class Main {
                             // 1. Stop recording stream
                             currentRecorder.stop();
 
+                            // disable pause button while processing/uploading
+                            SwingUtilities.invokeLater(() -> pauseBtn.setEnabled(false));
+
                             // 2. Upload to Google Drive and retrieve link
                             String shareUrl = driveService.uploadVideoAndGetLink(currentVideoFile);
 
@@ -79,6 +86,7 @@ public class Main {
 
                             SwingUtilities.invokeLater(() -> {
                                 recordBtn.setText("● Start Recording");
+                                pauseBtn.setText("Pause");
                                 recordBtn.setEnabled(true);
                                 statusLabel.setText("Done! Link copied to clipboard.");
                                 JOptionPane.showMessageDialog(frame,
@@ -88,6 +96,7 @@ public class Main {
                             ex.printStackTrace();
                             SwingUtilities.invokeLater(() -> {
                                 recordBtn.setText("● Start Recording");
+                                pauseBtn.setText("Pause");
                                 recordBtn.setEnabled(true);
                                 statusLabel.setText("Upload Failed!");
                                 JOptionPane.showMessageDialog(frame, "Upload failed: " + ex.getMessage());
@@ -97,8 +106,22 @@ public class Main {
                 }
             });
 
+            pauseBtn.addActionListener(e -> {
+                if (currentRecorder == null) return;
+                if (pauseBtn.getText().equalsIgnoreCase("Pause")) {
+                    currentRecorder.pause();
+                    pauseBtn.setText("Resume");
+                    statusLabel.setText("Status: Paused");
+                } else {
+                    currentRecorder.resume();
+                    pauseBtn.setText("Pause");
+                    statusLabel.setText("Status: Recording (Unlimited)...");
+                }
+            });
+
             frame.add(statusLabel);
             frame.add(recordBtn);
+            frame.add(pauseBtn);
             frame.setLocationRelativeTo(null);
             frame.setVisible(true);
         });
